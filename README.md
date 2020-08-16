@@ -1,4 +1,4 @@
-# Shadow Casting
+# Symmetric Shadow Casting
 This repository is just a Rust translation of the shadow casting algorithm from
 the Python implementation shown [here](https://www.albertford.com/shadowcasting/).
 It is a very nice article, with visuals and explaination.
@@ -53,6 +53,10 @@ some additional assumptions, requiring more dependencies, and providing a
 more complex API. Check it out if you are looking for different types
 of casting.
 
+## Alternate Name
+My brother suggested another name for this crate- I Don't Eat Anything That
+Casts a Shadow. This is much funny, but I went with the boring option
+of using the title of the tutorial that the algorithm came from.
 
 ## License
 As with the original algorith, this is licensed as CC0.
