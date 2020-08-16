@@ -175,6 +175,21 @@ pub fn inside_map<T>(pos: Pos, map: &Vec<Vec<T>>) -> bool {
     return (pos.1 as usize) < map.len() && (pos.0 as usize) < map[0].len();
 }
 
+#[cfg(test)]
+pub fn matching_visible(expected: Vec<Vec<usize>>, visible: Vec<(isize, isize)>) {
+    for y in 0..expected.len() {
+        for x in 0..expected[0].len() {
+            if visible.contains(&(x as isize, y as isize)) {
+                print!("1");
+            } else {
+                print!("0");
+            }
+            assert_eq!(expected[y][x] == 1, visible.contains(&(x as isize, y as isize)));
+        }
+        println!();
+    }
+}
+
 #[test]
 pub fn test_expansive_walls() {
     let origin = (1, 2);
@@ -197,20 +212,11 @@ pub fn test_expansive_walls() {
 
     compute_fov(origin, &mut is_blocking, &mut mark_visible);
 
-    for y in 0..tiles.len() as isize {
-        for x in 0..tiles[0].len() as isize {
-            if visible.contains(&(x, y)) {
-                print!("1");
-            } else {
-                print!("0");
-            }
-
-            assert_eq!(true, visible.contains(&(x, y)));
-        }
-        println!();
-    }
-
-    assert_eq!(tiles.len() * tiles[0].len(), visible.len());
+    let expected = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
+                        vec!(1, 1, 1, 1, 1, 1, 1),
+                        vec!(1, 1, 1, 1, 1, 1, 1),
+                        vec!(1, 1, 1, 1, 1, 1, 1));
+    matching_visible(expected, visible);
 }
 
 
@@ -238,38 +244,12 @@ pub fn test_expanding_shadows() {
 
     compute_fov(origin, &mut is_blocking, &mut mark_visible);
 
-    for y in 0..tiles.len() as isize {
-        for x in 0..tiles[0].len() as isize {
-            if visible.contains(&(x, y)) {
-                print!("1");
-            } else {
-                print!("0");
-            }
-        }
-        println!();
-    }
-
-    assert!(!visible.contains(&(2, 2)));
-    assert!(!visible.contains(&(3, 2)));
-
-    assert!(!visible.contains(&(2, 3)));
-    assert!(!visible.contains(&(3, 3)));
-    assert!(!visible.contains(&(4, 3)));
-    assert!(!visible.contains(&(5, 3)));
-
-    assert!(!visible.contains(&(3, 4)));
-    assert!(!visible.contains(&(4, 4)));
-    assert!(!visible.contains(&(5, 4)));
-
-    // check some visible tiles
-    assert!(visible.contains(&(0, 0)));
-    assert!(visible.contains(&(1, 0)));
-    assert!(visible.contains(&(0, 1)));
-    assert!(visible.contains(&(2, 1)));
-    assert!(visible.contains(&(1, 2)));
-    assert!(visible.contains(&(1, 3)));
-    assert!(visible.contains(&(1, 4)));
-    assert!(visible.contains(&(2, 4)));
+    let expected = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
+                        vec!(1, 1, 1, 1, 1, 1, 1),
+                        vec!(1, 1, 0, 0, 1, 1, 1),
+                        vec!(1, 1, 0, 0, 0, 0, 1),
+                        vec!(1, 1, 1, 0, 0, 0, 0));
+    matching_visible(expected, visible);
 }
 
 #[test]
@@ -297,14 +277,9 @@ pub fn test_no_blind_corners() {
 
     compute_fov(origin, &mut is_blocking, &mut mark_visible);
 
-    assert!(visible.contains(&(4, 2)));
-    assert!(!visible.contains(&(4, 3)));
-    assert!(visible.contains(&(5, 3)));
-
-    assert!(!visible.contains(&(0, 2)));
-    assert!(!visible.contains(&(0, 3)));
-    assert!(!visible.contains(&(1, 2)));
-    assert!(!visible.contains(&(1, 3)));
-    assert!(!visible.contains(&(2, 2)));
-    assert!(!visible.contains(&(3, 3)));
+    let expected = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
+                        vec!(1, 1, 1, 1, 1, 1, 1),
+                        vec!(0, 0, 0, 0, 1, 1, 1),
+                        vec!(0, 0, 0, 0, 0, 1, 1));
+    matching_visible(expected, visible);
 }
