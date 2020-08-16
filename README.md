@@ -43,5 +43,16 @@ I would expect that this mutated structure will by used to modify the map
 or grid, perhaps something cloned first if we are marking visibility
 within the structure itself.
 
+
+## Similar Crates
+There is already the [shadowcast](https://crates.io/crates/shadowcast)
+crate. This crate seems to implement additional algorithms, and is likely
+a fine choice. It seems to provide some additional features
+such as casting different shapes, which is cool. It also seems to make
+some additional assumptions, requiring more dependencies, and providing a 
+more complex API. Check it out if you are looking for different types
+of casting.
+
+
 ## License
 As with the original algorith, this is licensed as CC0.
