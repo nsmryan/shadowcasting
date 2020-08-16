@@ -4,9 +4,9 @@ use num_rational::*;
 type Pos = (isize, isize);
 
 // TODO add a userdata to the closures
-pub fn compute_fov<F, G>(origin: Pos, is_blocking: &mut F, mark_visible: &mut G)
-    where F: FnMut(Pos) -> bool,
-          G: FnMut(Pos), {
+pub fn compute_fov<Blocking, MarkVisible, UserData>(origin: Pos, is_blocking: &Blocking, mark_visible: &MarkVisible, user_data: &mut UserData)
+    where Blocking: Fn(Pos, &UserData) -> bool,
+          MarkVisible: Fn(Pos, &mut UserData), {
 
     mark_visible(origin);
 
@@ -15,13 +15,13 @@ pub fn compute_fov<F, G>(origin: Pos, is_blocking: &mut F, mark_visible: &mut G)
 
         let first_row = Row::new(1, Rational::new(-1, 1), Rational::new(1, 1));
 
-        scan(first_row, quadrant, is_blocking, mark_visible);
+        scan(first_row, quadrant, is_blocking, mark_visible, user_data);
     }
 }
 
-fn scan<F, G>(row: Row, quadrant: Quadrant, is_blocking: &mut F, mark_visible: &mut G) 
-    where F: FnMut(Pos) -> bool,
-          G: FnMut(Pos), {
+fn scan<MarkVisible, Blocking>(row: Row, quadrant: Quadrant, is_blocking: &Blocking, mark_visible: &MarkVisible, user_data: &mut UserData)
+    where Blocking: Fn(Pos, &UserData) -> bool,
+          MarkVisible: Fn(Pos, &mut UserData), {
     let mut prev_tile = None;
 
     let mut row = row;
@@ -30,13 +30,13 @@ fn scan<F, G>(row: Row, quadrant: Quadrant, is_blocking: &mut F, mark_visible: &
         let tile_is_wall = is_blocking(quadrant.transform(tile));
         let tile_is_floor = !tile_is_wall;
 
-        let prev_is_wall = prev_tile.map_or(false, |prev| is_blocking(quadrant.transform(prev)));
-        let prev_is_floor = prev_tile.map_or(false, |prev| !is_blocking(quadrant.transform(prev)));
+        let prev_is_wall = prev_tile.map_or(false, |prev| is_blocking(quadrant.transform(prev), user_data));
+        let prev_is_floor = prev_tile.map_or(false, |prev| !is_blocking(quadrant.transform(prev), user_data));
 
         if tile_is_wall || is_symmetric(row, tile) {
             let pos = quadrant.transform(tile);
 
-            mark_visible(pos);
+            mark_visible(pos, user_data);
         }
 
         if prev_is_wall && tile_is_floor {
@@ -48,14 +48,14 @@ fn scan<F, G>(row: Row, quadrant: Quadrant, is_blocking: &mut F, mark_visible: &
 
             next_row.end_slope = slope(tile);
 
-            scan(next_row, quadrant, is_blocking, mark_visible);
+            scan(next_row, quadrant, is_blocking, mark_visible, user_data);
         }
 
         prev_tile = Some(tile);
     }
         
-    if prev_tile.map_or(false, |tile| !is_blocking(quadrant.transform(tile))) {
-        scan(row.next(), quadrant, is_blocking, mark_visible);
+    if prev_tile.map_or(false, |tile| !is_blocking(quadrant.transform(tile), user_data)) {
+        scan(row.next(), quadrant, is_blocking, mark_visible, user_data);
     }
 }
 
@@ -63,10 +63,10 @@ fn scan<F, G>(row: Row, quadrant: Quadrant, is_blocking: &mut F, mark_visible: &
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub enum Cardinal {
-    North = 0,
-    East  = 1,
-    South = 2,
-    West  = 3,
+    North,
+    East,
+    South,
+    West,
 }
 
 impl Cardinal {
@@ -199,18 +199,18 @@ pub fn test_expansive_walls() {
                      vec!(1, 0, 0, 0, 0, 0, 1),
                      vec!(1, 1, 1, 1, 1, 1, 1));
 
-    let mut is_blocking = |pos: Pos| {
+    let mut is_blocking = |pos: Pos, user_data| {
         return  !inside_map(pos, &tiles) || tiles[pos.1 as usize][pos.0 as usize] == 1;
     };
 
     let mut visible = Vec::new();
-    let mut mark_visible = |pos: Pos| {
+    let mut mark_visible = |pos: Pos, user_data| {
         if inside_map(pos, &tiles) && !visible.contains(&pos) {
             visible.push(pos);
         }
     };
 
-    compute_fov(origin, &mut is_blocking, &mut mark_visible);
+    compute_fov(origin, &mut is_blocking, &mut mark_visible, &mut ());
 
     let expected = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
                         vec!(1, 1, 1, 1, 1, 1, 1),
@@ -230,19 +230,19 @@ pub fn test_expanding_shadows() {
                      vec!(0, 0, 0, 0, 0, 0, 0),
                      vec!(0, 0, 0, 0, 0, 0, 0));
 
-    let mut is_blocking = |pos: Pos| {
+    let mut is_blocking = |pos: Pos, user_data| {
         return !inside_map(pos, &tiles) || tiles[pos.1 as usize][pos.0 as usize] == 1;
     };
 
     let mut visible = Vec::new();
-    let mut mark_visible = |pos: Pos| {
+    let mut mark_visible = |pos: Pos, user_data| {
 
         if inside_map(pos, &tiles) && !visible.contains(&pos) {
             visible.push(pos);
         }
     };
 
-    compute_fov(origin, &mut is_blocking, &mut mark_visible);
+    compute_fov(origin, &mut is_blocking, &mut mark_visible, &mut ());
 
     let expected = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
                         vec!(1, 1, 1, 1, 1, 1, 1),
@@ -261,13 +261,13 @@ pub fn test_no_blind_corners() {
                      vec!(0, 0, 0, 1, 0, 0, 0),
                      vec!(0, 0, 0, 1, 0, 0, 0));
 
-    let mut is_blocking = |pos: Pos| {
+    let mut is_blocking = |pos: Pos, user_data| {
         let outside = (pos.1 as usize) >= tiles.len() || (pos.0 as usize) >= tiles[0].len();
         return  outside || tiles[pos.1 as usize][pos.0 as usize] == 1;
     };
 
     let mut visible = Vec::new();
-    let mut mark_visible = |pos: Pos| {
+    let mut mark_visible = |pos: Pos, user_data| {
         let outside = (pos.1 as usize) >= tiles.len() || (pos.0 as usize) >= tiles[0].len();
 
         if !outside && !visible.contains(&pos) {
@@ -275,7 +275,7 @@ pub fn test_no_blind_corners() {
         }
     };
 
-    compute_fov(origin, &mut is_blocking, &mut mark_visible);
+    compute_fov(origin, &is_blocking, &mark_visible, &mut ());
 
     let expected = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
                         vec!(1, 1, 1, 1, 1, 1, 1),
