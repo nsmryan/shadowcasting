@@ -4,8 +4,8 @@ the Python implementation shown [here](https://www.albertford.com/shadowcasting/
 It is a very nice article, with visuals and explaination.
 
 
-This implementation is tested against the examples in the article, and seems to 
-produce identical results. 
+This implementation is tested against the examples in the article, and 
+produces identical results. 
 
 
 ## Usage
@@ -34,7 +34,7 @@ modifying it by indicating visible tiles.
 See the tests for examples on how this might be used.
 
 
-## Limitation
+## Limitations
 I would have liked to have this interface provide a way to lookup blocking tiles
 and modify the same structure, but I couldn't get the lifetimes to work out.
 As it is, you will have to capture your map structure immutably in is\_blocking,
@@ -55,7 +55,7 @@ of casting.
 
 ## Alternate Name
 My brother suggested another name for this crate- I Don't Eat Anything That
-Casts a Shadow. This is much funny, but I went with the boring option
+Casts a Shadow. This is much funnier, but I went with the boring option
 of using the title of the tutorial that the algorithm came from.
 
 ## License
