@@ -1,0 +1,12 @@
+[package]
+name = "shadowcast"
+version = "0.1.0"
+authors = ["Noah Ryan <nsmryan@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+num-rational = "0.3"
+
+[lib]
+name = "shadowcast"
+path = "src/shadowcast.rs"
