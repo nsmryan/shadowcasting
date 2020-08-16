@@ -1,5 +1,3 @@
-use std::process::exit;
-
 use num_rational::*;
 
 
@@ -129,9 +127,9 @@ impl Row {
         let depth_times_start = Rational::new(self.depth, 1) * self.start_slope;
         let depth_times_end = Rational::new(self.depth, 1) * self.end_slope;
 
-        let min_col = depth_times_start.ceil().to_integer();
+        let min_col = round_ties_up(depth_times_start);
 
-        let max_col = depth_times_end.floor().to_integer();
+        let max_col = round_ties_down(depth_times_end);
 
         let depth = self.depth;
 
@@ -149,7 +147,7 @@ pub fn slope(tile: Pos) -> Rational {
 }
 
 pub fn is_symmetric(row: Row, tile: Pos) -> bool {
-    let (row_depth, col) = tile;
+    let (_row_depth, col) = tile;
 
     let depth_times_start = Rational::new(row.depth, 1) * row.start_slope;
     let depth_times_end = Rational::new(row.depth, 1) * row.end_slope;
@@ -165,11 +163,16 @@ pub fn is_symmetric(row: Row, tile: Pos) -> bool {
 }
 
 pub fn round_ties_up(n: Rational) -> isize {
-    return (n + Rational::new(1, 2)).to_integer();
+    return (n + Rational::new(1, 2)).floor().to_integer();
 }
 
 pub fn round_ties_down(n: Rational) -> isize {
-    return (n - Rational::new(1, 2)).to_integer();
+    return (n - Rational::new(1, 2)).ceil().to_integer();
+}
+
+#[cfg(test)]
+pub fn inside_map<T>(pos: Pos, map: &Vec<Vec<T>>) -> bool {
+    return (pos.1 as usize) < map.len() && (pos.0 as usize) < map[0].len();
 }
 
 #[test]
@@ -180,6 +183,103 @@ pub fn test_expansive_walls() {
                      vec!(1, 0, 0, 0, 0, 0, 1),
                      vec!(1, 0, 0, 0, 0, 0, 1),
                      vec!(1, 1, 1, 1, 1, 1, 1));
+
+    let mut is_blocking = |pos: Pos| {
+        return  !inside_map(pos, &tiles) || tiles[pos.1 as usize][pos.0 as usize] == 1;
+    };
+
+    let mut visible = Vec::new();
+    let mut mark_visible = |pos: Pos| {
+        if inside_map(pos, &tiles) && !visible.contains(&pos) {
+            visible.push(pos);
+        }
+    };
+
+    compute_fov(origin, &mut is_blocking, &mut mark_visible);
+
+    for y in 0..tiles.len() as isize {
+        for x in 0..tiles[0].len() as isize {
+            if visible.contains(&(x, y)) {
+                print!("1");
+            } else {
+                print!("0");
+            }
+
+            assert_eq!(true, visible.contains(&(x, y)));
+        }
+        println!();
+    }
+
+    assert_eq!(tiles.len() * tiles[0].len(), visible.len());
+}
+
+
+#[test]
+pub fn test_expanding_shadows() {
+    let origin = (0, 0);
+
+    let tiles = vec!(vec!(0, 0, 0, 0, 0, 0, 0),
+                     vec!(0, 1, 0, 0, 0, 0, 0),
+                     vec!(0, 0, 0, 0, 0, 0, 0),
+                     vec!(0, 0, 0, 0, 0, 0, 0),
+                     vec!(0, 0, 0, 0, 0, 0, 0));
+
+    let mut is_blocking = |pos: Pos| {
+        return !inside_map(pos, &tiles) || tiles[pos.1 as usize][pos.0 as usize] == 1;
+    };
+
+    let mut visible = Vec::new();
+    let mut mark_visible = |pos: Pos| {
+
+        if inside_map(pos, &tiles) && !visible.contains(&pos) {
+            visible.push(pos);
+        }
+    };
+
+    compute_fov(origin, &mut is_blocking, &mut mark_visible);
+
+    for y in 0..tiles.len() as isize {
+        for x in 0..tiles[0].len() as isize {
+            if visible.contains(&(x, y)) {
+                print!("1");
+            } else {
+                print!("0");
+            }
+        }
+        println!();
+    }
+
+    assert!(!visible.contains(&(2, 2)));
+    assert!(!visible.contains(&(3, 2)));
+
+    assert!(!visible.contains(&(2, 3)));
+    assert!(!visible.contains(&(3, 3)));
+    assert!(!visible.contains(&(4, 3)));
+    assert!(!visible.contains(&(5, 3)));
+
+    assert!(!visible.contains(&(3, 4)));
+    assert!(!visible.contains(&(4, 4)));
+    assert!(!visible.contains(&(5, 4)));
+
+    // check some visible tiles
+    assert!(visible.contains(&(0, 0)));
+    assert!(visible.contains(&(1, 0)));
+    assert!(visible.contains(&(0, 1)));
+    assert!(visible.contains(&(2, 1)));
+    assert!(visible.contains(&(1, 2)));
+    assert!(visible.contains(&(1, 3)));
+    assert!(visible.contains(&(1, 4)));
+    assert!(visible.contains(&(2, 4)));
+}
+
+#[test]
+pub fn test_no_blind_corners() {
+    let origin = (3, 0);
+
+    let tiles = vec!(vec!(0, 0, 0, 0, 0, 0, 0),
+                     vec!(1, 1, 1, 1, 0, 0, 0),
+                     vec!(0, 0, 0, 1, 0, 0, 0),
+                     vec!(0, 0, 0, 1, 0, 0, 0));
 
     let mut is_blocking = |pos: Pos| {
         let outside = (pos.1 as usize) >= tiles.len() || (pos.0 as usize) >= tiles[0].len();
@@ -197,19 +297,14 @@ pub fn test_expansive_walls() {
 
     compute_fov(origin, &mut is_blocking, &mut mark_visible);
 
-    println!("{:?}", &visible);
+    assert!(visible.contains(&(4, 2)));
+    assert!(!visible.contains(&(4, 3)));
+    assert!(visible.contains(&(5, 3)));
 
-    for y in 0..tiles.len() as isize {
-        for x in 0..tiles[0].len() as isize {
-            if visible.contains(&(x, y)) {
-                print!("1");
-            } else {
-                print!("0");
-            }
-        }
-        println!();
-    }
-
-    assert_eq!(tiles.len() * tiles[0].len(), visible.len());
+    assert!(!visible.contains(&(0, 2)));
+    assert!(!visible.contains(&(0, 3)));
+    assert!(!visible.contains(&(1, 2)));
+    assert!(!visible.contains(&(1, 3)));
+    assert!(!visible.contains(&(2, 2)));
+    assert!(!visible.contains(&(3, 3)));
 }
-
