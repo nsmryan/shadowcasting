@@ -187,7 +187,8 @@ fn round_ties_down(n: Rational) -> isize {
 
 #[cfg(test)]
 fn inside_map<T>(pos: Pos, map: &Vec<Vec<T>>) -> bool {
-    return (pos.1 as usize) < map.len() && (pos.0 as usize) < map[0].len();
+    let is_inside = (pos.1 as usize) < map.len() && (pos.0 as usize) < map[0].len();
+    return is_inside;
 }
 
 #[cfg(test)]
@@ -251,7 +252,6 @@ fn test_expanding_shadows() {
 
     let mut visible = Vec::new();
     let mut mark_visible = |pos: Pos| {
-
         if inside_map(pos, &tiles) && !visible.contains(&pos) {
             visible.push(pos);
         }
