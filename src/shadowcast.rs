@@ -63,10 +63,10 @@ fn scan<F, G>(row: Row, quadrant: Quadrant, is_blocking: &mut F, mark_visible: &
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub enum Cardinal {
-    North = 0,
-    East  = 1,
-    South = 2,
-    West  = 3,
+    North,
+    East,
+    South,
+    West,
 }
 
 impl Cardinal {
