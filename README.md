@@ -11,7 +11,11 @@ produce identical results.
 ## Usage
 The use of this crate is simple- there is only a single function exposed:
 ```rust
+pub type Pos = (isize, isize);
+
 pub fn compute_fov<F, G>(origin: Pos, is_blocking: &mut F, mark_visible: &mut G)
+    where F: FnMut(Pos) -> bool,
+          G: FnMut(Pos), {
 ```
 
 This function takes a position, which is a pair of isizes (you may have to cast
