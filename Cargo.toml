@@ -3,9 +3,14 @@ name = "shadowcast"
 version = "0.1.0"
 authors = ["Noah Ryan <nsmryan@gmail.com>"]
 edition = "2018"
+keywords = ["fov", "roguelike", "shadowcasting"]
+description = "Simple implementation of the shadow casting FOV algorithm"
+license = "CC0"
+readme = "README.markdown"
+repository = "https://github.com/nsmryan/shadowcasting"
 
 [dependencies]
-num-rational = "0.3"
+num-rational = { version = "0.3", default-features = false }
 
 [lib]
 name = "shadowcast"
