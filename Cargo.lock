@@ -37,7 +37,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "shadowcast"
+name = "symmetric-shadowcasting"
 version = "0.1.0"
 dependencies = [
  "num-rational",
