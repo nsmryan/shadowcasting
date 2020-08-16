@@ -2,12 +2,10 @@ use num_rational::*;
 
 
 type Pos = (isize, isize);
+type Blocking<UserData> = fn(Pos, &UserData) -> bool;
+type MarkVisible<UserData> = fn(Pos, &mut UserData);
 
-// TODO add a userdata to the closures
-pub fn compute_fov<Blocking, MarkVisible, UserData>(origin: Pos, is_blocking: &Blocking, mark_visible: &MarkVisible, user_data: &mut UserData)
-    where Blocking: Fn(Pos, &UserData) -> bool,
-          MarkVisible: Fn(Pos, &mut UserData), {
-
+pub fn compute_fov<Blocking, MarkVisible, UserData>(origin: Pos, is_blocking: Blocking, mark_visible: MarkVisible, user_data: &mut UserData) {
     mark_visible(origin);
 
     for i in 0..4 {
@@ -19,9 +17,7 @@ pub fn compute_fov<Blocking, MarkVisible, UserData>(origin: Pos, is_blocking: &B
     }
 }
 
-fn scan<MarkVisible, Blocking>(row: Row, quadrant: Quadrant, is_blocking: &Blocking, mark_visible: &MarkVisible, user_data: &mut UserData)
-    where Blocking: Fn(Pos, &UserData) -> bool,
-          MarkVisible: Fn(Pos, &mut UserData), {
+fn scan<MarkVisible, Blocking>(row: Row, quadrant: Quadrant, is_blocking: Blocking, mark_visible: MarkVisible, user_data: &mut UserData) {
     let mut prev_tile = None;
 
     let mut row = row;
@@ -171,115 +167,95 @@ pub fn round_ties_down(n: Rational) -> isize {
 }
 
 #[cfg(test)]
-pub fn inside_map<T>(pos: Pos, map: &Vec<Vec<T>>) -> bool {
-    return (pos.1 as usize) < map.len() && (pos.0 as usize) < map[0].len();
-}
+mod test {
+    type UserData = (Vec<usize>, Vec<Vec<Pos>>);
 
-#[cfg(test)]
-pub fn matching_visible(expected: Vec<Vec<usize>>, visible: Vec<(isize, isize)>) {
-    for y in 0..expected.len() {
-        for x in 0..expected[0].len() {
-            if visible.contains(&(x as isize, y as isize)) {
-                print!("1");
-            } else {
-                print!("0");
-            }
-            assert_eq!(expected[y][x] == 1, visible.contains(&(x as isize, y as isize)));
-        }
-        println!();
+    pub fn inside_map<T>(pos: Pos, map: &Vec<Vec<T>>) -> bool {
+        return (pos.1 as usize) < map.len() && (pos.0 as usize) < map[0].len();
     }
-}
 
-#[test]
-pub fn test_expansive_walls() {
-    let origin = (1, 2);
-
-    let tiles = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
-                     vec!(1, 0, 0, 0, 0, 0, 1),
-                     vec!(1, 0, 0, 0, 0, 0, 1),
-                     vec!(1, 1, 1, 1, 1, 1, 1));
-
-    let mut is_blocking = |pos: Pos, user_data| {
-        return  !inside_map(pos, &tiles) || tiles[pos.1 as usize][pos.0 as usize] == 1;
-    };
-
-    let mut visible = Vec::new();
-    let mut mark_visible = |pos: Pos, user_data| {
-        if inside_map(pos, &tiles) && !visible.contains(&pos) {
-            visible.push(pos);
+    pub fn matching_visible(expected: Vec<Vec<usize>>, visible: Vec<(isize, isize)>) {
+        for y in 0..expected.len() {
+            for x in 0..expected[0].len() {
+                if visible.contains(&(x as isize, y as isize)) {
+                    print!("1");
+                } else {
+                    print!("0");
+                }
+                assert_eq!(expected[y][x] == 1, visible.contains(&(x as isize, y as isize)));
+            }
+            println!();
         }
-    };
+    }
 
-    compute_fov(origin, &mut is_blocking, &mut mark_visible, &mut ());
-
-    let expected = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
-                        vec!(1, 1, 1, 1, 1, 1, 1),
-                        vec!(1, 1, 1, 1, 1, 1, 1),
-                        vec!(1, 1, 1, 1, 1, 1, 1));
-    matching_visible(expected, visible);
-}
-
-
-#[test]
-pub fn test_expanding_shadows() {
-    let origin = (0, 0);
-
-    let tiles = vec!(vec!(0, 0, 0, 0, 0, 0, 0),
-                     vec!(0, 1, 0, 0, 0, 0, 0),
-                     vec!(0, 0, 0, 0, 0, 0, 0),
-                     vec!(0, 0, 0, 0, 0, 0, 0),
-                     vec!(0, 0, 0, 0, 0, 0, 0));
-
-    let mut is_blocking = |pos: Pos, user_data| {
-        return !inside_map(pos, &tiles) || tiles[pos.1 as usize][pos.0 as usize] == 1;
-    };
-
-    let mut visible = Vec::new();
-    let mut mark_visible = |pos: Pos, user_data| {
-
-        if inside_map(pos, &tiles) && !visible.contains(&pos) {
-            visible.push(pos);
-        }
-    };
-
-    compute_fov(origin, &mut is_blocking, &mut mark_visible, &mut ());
-
-    let expected = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
-                        vec!(1, 1, 1, 1, 1, 1, 1),
-                        vec!(1, 1, 0, 0, 1, 1, 1),
-                        vec!(1, 1, 0, 0, 0, 0, 1),
-                        vec!(1, 1, 1, 0, 0, 0, 0));
-    matching_visible(expected, visible);
-}
-
-#[test]
-pub fn test_no_blind_corners() {
-    let origin = (3, 0);
-
-    let tiles = vec!(vec!(0, 0, 0, 0, 0, 0, 0),
-                     vec!(1, 1, 1, 1, 0, 0, 0),
-                     vec!(0, 0, 0, 1, 0, 0, 0),
-                     vec!(0, 0, 0, 1, 0, 0, 0));
-
-    let mut is_blocking = |pos: Pos, user_data| {
+    pub fn is_blocking(pos: Pos, user_data: &mut UserData) -> bool {
+        let tiles = &user_data.0;
         let outside = (pos.1 as usize) >= tiles.len() || (pos.0 as usize) >= tiles[0].len();
         return  outside || tiles[pos.1 as usize][pos.0 as usize] == 1;
-    };
+    }
 
-    let mut visible = Vec::new();
-    let mut mark_visible = |pos: Pos, user_data| {
-        let outside = (pos.1 as usize) >= tiles.len() || (pos.0 as usize) >= tiles[0].len();
+    pub fn mark_visible(pos: Pos, user_data: &mut UserData) {
+        let outside = (pos.1 as usize) >= user_data.1.len() || (pos.0 as usize) >= user_data.1[0].len();
 
-        if !outside && !visible.contains(&pos) {
-            visible.push(pos);
+        if !outside && !user_data.0.contains(&pos) {
+            user_data.0.push(pos);
         }
-    };
+    }
 
-    compute_fov(origin, &is_blocking, &mark_visible, &mut ());
+    #[test]
+    pub fn test_expansive_walls() {
+        let origin = (1, 2);
 
-    let expected = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
-                        vec!(1, 1, 1, 1, 1, 1, 1),
-                        vec!(0, 0, 0, 0, 1, 1, 1),
-                        vec!(0, 0, 0, 0, 0, 1, 1));
-    matching_visible(expected, visible);
+        let tiles = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
+                         vec!(1, 0, 0, 0, 0, 0, 1),
+                         vec!(1, 0, 0, 0, 0, 0, 1),
+                         vec!(1, 1, 1, 1, 1, 1, 1));
+
+        compute_fov(origin, is_blocking, mark_visible, &mut ());
+
+        let expected = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
+                            vec!(1, 1, 1, 1, 1, 1, 1),
+                            vec!(1, 1, 1, 1, 1, 1, 1),
+                            vec!(1, 1, 1, 1, 1, 1, 1));
+        matching_visible(expected, visible);
+    }
+
+
+    #[test]
+    pub fn test_expanding_shadows() {
+        let origin = (0, 0);
+
+        let tiles = vec!(vec!(0, 0, 0, 0, 0, 0, 0),
+                         vec!(0, 1, 0, 0, 0, 0, 0),
+                         vec!(0, 0, 0, 0, 0, 0, 0),
+                         vec!(0, 0, 0, 0, 0, 0, 0),
+                         vec!(0, 0, 0, 0, 0, 0, 0));
+
+        compute_fov(origin, is_blocking, mark_visible, &mut ());
+
+        let expected = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
+                            vec!(1, 1, 1, 1, 1, 1, 1),
+                            vec!(1, 1, 0, 0, 1, 1, 1),
+                            vec!(1, 1, 0, 0, 0, 0, 1),
+                            vec!(1, 1, 1, 0, 0, 0, 0));
+        matching_visible(expected, visible);
+    }
+
+    #[test]
+    pub fn test_no_blind_corners() {
+        let origin = (3, 0);
+
+        let tiles = vec!(vec!(0, 0, 0, 0, 0, 0, 0),
+                         vec!(1, 1, 1, 1, 0, 0, 0),
+                         vec!(0, 0, 0, 1, 0, 0, 0),
+                         vec!(0, 0, 0, 1, 0, 0, 0));
+
+        compute_fov(origin, is_blocking, mark_visible, &mut ());
+
+        let expected = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
+                            vec!(1, 1, 1, 1, 1, 1, 1),
+                            vec!(0, 0, 0, 0, 1, 1, 1),
+                            vec!(0, 0, 0, 0, 0, 1, 1));
+        matching_visible(expected, visible);
+    }
 }
