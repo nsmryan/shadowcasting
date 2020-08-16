@@ -1,10 +1,12 @@
 use num_rational::*;
 
 
-type Pos = (isize, isize);
+/// This Pos type is expected to be generate enough to allow the user
+/// to cast into and out of their own type, such as from the euclid crate.
+pub type Pos = (isize, isize);
 
 
-/// Compute FOV information for a given position.
+/// Compute FOV information for a given position using the shadow mapping algorithm.
 ///
 /// This uses the is_blocking closure, which checks whether a given position is
 /// blocked (such as by a wall), and is expected to capture some kind of grid
