@@ -3,7 +3,20 @@ use num_rational::*;
 
 type Pos = (isize, isize);
 
-// TODO add a userdata to the closures
+
+/// Compute FOV information for a given position.
+///
+/// This uses the is_blocking closure, which checks whether a given position is
+/// blocked (such as by a wall), and is expected to capture some kind of grid
+/// or map from the user.
+///
+/// The mark_visible closure provides the ability to collect visible tiles. This
+/// may push them to a vector (captured in the closure's environment), or
+/// modify a cloned version of the map.
+///
+///
+/// I tried to write a nicer API which would modify the map as a separate user
+/// data, but I can't work out the lifetime annotations.
 pub fn compute_fov<F, G>(origin: Pos, is_blocking: &mut F, mark_visible: &mut G)
     where F: FnMut(Pos) -> bool,
           G: FnMut(Pos), {
@@ -62,7 +75,7 @@ fn scan<F, G>(row: Row, quadrant: Quadrant, is_blocking: &mut F, mark_visible: &
 
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
-pub enum Cardinal {
+enum Cardinal {
     North,
     East,
     South,
@@ -70,25 +83,25 @@ pub enum Cardinal {
 }
 
 impl Cardinal {
-    pub fn from_index(index: usize) -> Cardinal {
+    fn from_index(index: usize) -> Cardinal {
         use Cardinal::*;
         return [North, East, South, West][index];
     }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
-pub struct Quadrant {
+struct Quadrant {
     cardinal: Cardinal,
     ox: isize,
     oy: isize,
 }
 
 impl Quadrant {
-    pub fn new(cardinal: Cardinal, origin: Pos) -> Quadrant {
+    fn new(cardinal: Cardinal, origin: Pos) -> Quadrant {
         return Quadrant { cardinal, ox: origin.0, oy: origin.1 };
     }
 
-    pub fn transform(&self, tile: Pos) -> Pos{
+    fn transform(&self, tile: Pos) -> Pos{
         let (row, col) = tile;
 
         match self.cardinal {
@@ -112,18 +125,18 @@ impl Quadrant {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
-pub struct Row {
+struct Row {
     depth: isize,
     start_slope: Rational,
     end_slope: Rational,
 }
 
 impl Row {
-    pub fn new(depth: isize, start_slope: Rational, end_slope: Rational) -> Row {
+    fn new(depth: isize, start_slope: Rational, end_slope: Rational) -> Row {
         return Row { depth, start_slope, end_slope, };
     }
 
-    pub fn tiles(&self) -> impl Iterator<Item=Pos> {
+    fn tiles(&self) -> impl Iterator<Item=Pos> {
         let depth_times_start = Rational::new(self.depth, 1) * self.start_slope;
         let depth_times_end = Rational::new(self.depth, 1) * self.end_slope;
 
@@ -136,17 +149,17 @@ impl Row {
         return (min_col..=max_col).map(move |col| (depth, col));
     }
 
-    pub fn next(&self) -> Row {
+    fn next(&self) -> Row {
         return Row::new(self.depth + 1, self.start_slope, self.end_slope);
     }
 }
 
-pub fn slope(tile: Pos) -> Rational {
+fn slope(tile: Pos) -> Rational {
     let (row_depth, col) = tile;
     return Rational::new(2 * col - 1, 2 * row_depth);
 }
 
-pub fn is_symmetric(row: Row, tile: Pos) -> bool {
+fn is_symmetric(row: Row, tile: Pos) -> bool {
     let (_row_depth, col) = tile;
 
     let depth_times_start = Rational::new(row.depth, 1) * row.start_slope;
@@ -162,21 +175,21 @@ pub fn is_symmetric(row: Row, tile: Pos) -> bool {
     return symmetric;
 }
 
-pub fn round_ties_up(n: Rational) -> isize {
+fn round_ties_up(n: Rational) -> isize {
     return (n + Rational::new(1, 2)).floor().to_integer();
 }
 
-pub fn round_ties_down(n: Rational) -> isize {
+fn round_ties_down(n: Rational) -> isize {
     return (n - Rational::new(1, 2)).ceil().to_integer();
 }
 
 #[cfg(test)]
-pub fn inside_map<T>(pos: Pos, map: &Vec<Vec<T>>) -> bool {
+fn inside_map<T>(pos: Pos, map: &Vec<Vec<T>>) -> bool {
     return (pos.1 as usize) < map.len() && (pos.0 as usize) < map[0].len();
 }
 
 #[cfg(test)]
-pub fn matching_visible(expected: Vec<Vec<usize>>, visible: Vec<(isize, isize)>) {
+fn matching_visible(expected: Vec<Vec<usize>>, visible: Vec<(isize, isize)>) {
     for y in 0..expected.len() {
         for x in 0..expected[0].len() {
             if visible.contains(&(x as isize, y as isize)) {
@@ -191,7 +204,7 @@ pub fn matching_visible(expected: Vec<Vec<usize>>, visible: Vec<(isize, isize)>)
 }
 
 #[test]
-pub fn test_expansive_walls() {
+fn test_expansive_walls() {
     let origin = (1, 2);
 
     let tiles = vec!(vec!(1, 1, 1, 1, 1, 1, 1),
@@ -221,7 +234,7 @@ pub fn test_expansive_walls() {
 
 
 #[test]
-pub fn test_expanding_shadows() {
+fn test_expanding_shadows() {
     let origin = (0, 0);
 
     let tiles = vec!(vec!(0, 0, 0, 0, 0, 0, 0),
@@ -253,7 +266,7 @@ pub fn test_expanding_shadows() {
 }
 
 #[test]
-pub fn test_no_blind_corners() {
+fn test_no_blind_corners() {
     let origin = (3, 0);
 
     let tiles = vec!(vec!(0, 0, 0, 0, 0, 0, 0),
