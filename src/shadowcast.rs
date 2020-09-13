@@ -170,9 +170,6 @@ fn is_symmetric(row: Row, tile: Pos) -> bool {
     let col_rat = Rational::new(col, 1);
 
     let symmetric = col_rat >= depth_times_start && col_rat <= depth_times_end;
-    if tile == (6, 0) {
-        dbg!(symmetric);
-    }
 
     return symmetric;
 }
