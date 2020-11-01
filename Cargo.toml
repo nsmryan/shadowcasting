@@ -13,5 +13,5 @@ repository = "https://github.com/nsmryan/shadowcasting"
 num-rational = { version = "0.3", default-features = false }
 
 [lib]
-name = "shadowcast"
+name = "symmetric_shadowcasting"
 path = "src/shadowcast.rs"
