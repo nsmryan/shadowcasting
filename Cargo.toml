@@ -1,6 +1,6 @@
 [package]
 name = "symmetric-shadowcasting"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Noah Ryan <nsmryan@gmail.com>"]
 edition = "2018"
 keywords = ["fov", "roguelike", "shadowcasting"]
